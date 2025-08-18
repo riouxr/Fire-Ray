@@ -1,0 +1,12 @@
+schema_version = "1.0.0"
+id = "fireray"
+version = "2.0.0"
+name = "Fire Ray"
+tagline = "Reality Capture setup and create an empty at desired place on a tracked camera"
+maintainer = "Blender Bob, Danny Di Donato, Debuk"
+type = "add-on"
+website = "https://github.com/riouxr/Fire-Ray"
+tags = ["Camera","Tracking"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2025 Robert Rioux"]
