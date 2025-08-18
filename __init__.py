@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Reality Capture & Fire Ray tools",
     "author": "ChatGPT + User",
-    "version": (2, 1, 0),
-    "blender": (3, 0, 0),
+    "version": (2, 0, 0),
+    "blender": (4, 2, 0),
     "location": "3D Viewport > Sidebar > Tool tab",
     "description": "Photogrammetry camera setup (background + markers) and Fire ray tool",
     "category": "3D View",
@@ -17,29 +17,36 @@ from mathutils import Vector
 # -------------------------------------------------------------------
 
 class FIRE_OT_custom(bpy.types.Operator):
-    """Draws straight curve between camera and empty"""
+    """Draws straight curve between camera and TrackingEmpty"""
     bl_idname = "blenderbob.fire"
     bl_label = "Select Empty and Fire!"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        sel_objs = context.selected_objects
-        return any(obj.type == 'EMPTY' for obj in sel_objs)
+        # Always allow the button
+        return True
 
     def execute(self, context):
         maincam = context.scene.camera
-        sel_objs = context.selected_objects
-        first_sel_empty = next((obj for obj in sel_objs if obj.type == 'EMPTY'), None)
+        first_sel_empty = context.scene.objects.get("TrackingEmpty")
 
         if not first_sel_empty:
-            raise RuntimeError('No empty selected')
+            self.report({'ERROR'}, "No TrackingEmpty found in the scene. Please create it first.")
+            return {'CANCELLED'}
+
+        # Ensure TrackingEmpty is selected and active
+        for obj in context.selected_objects:
+            obj.select_set(False)
+        first_sel_empty.select_set(True)
+        context.view_layer.objects.active = first_sel_empty
 
         # Remove old curves
         for obj in list(context.scene.objects):
             if obj.name.startswith('CamToEmptyCurve'):
                 bpy.data.objects.remove(obj, do_unlink=True)
 
+        # Create curve
         new_curve = bpy.data.curves.new('path_curve', type='CURVE')
         new_curve.dimensions = '3D'
         path = new_curve.splines.new('POLY')
@@ -56,12 +63,16 @@ class FIRE_OT_custom(bpy.types.Operator):
         context.scene.collection.objects.link(curve_obj)
         context.view_layer.objects.active = curve_obj
         curve_obj.select_set(True)
+
+        # Convert curve to mesh
         bpy.ops.object.convert(target='MESH')
+
+        # Restore TrackingEmpty as active
         context.view_layer.objects.active = first_sel_empty
         curve_obj.select_set(False)
         first_sel_empty.select_set(True)
-        return {'FINISHED'}
 
+        return {'FINISHED'}
 
 class CREATE_EMPTY_OT_custom(bpy.types.Operator):
     """Creates an empty in the scene"""
@@ -75,6 +86,8 @@ class CREATE_EMPTY_OT_custom(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.object.empty_add(type='PLAIN_AXES')
+        empty = context.active_object
+        empty.name = "TrackingEmpty"
         return {'FINISHED'}
 
 # -------------------------------------------------------------------
